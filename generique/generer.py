@@ -3,7 +3,7 @@
 
 Usage : python3 generer.py            -> vertical 1080x1920 (TikTok)
         python3 generer.py --paysage  -> 1920x1080 (Twitch / YouTube)
-Voix : voix_elevenlabs.mp3 (ElevenLabs, voix "Gideon" via Higgsfield).
+Voix : dossier voix/ (ElevenLabs, voix "Gideon" via Higgsfield), une phrase par fichier.
 Dépendances : ffmpeg, numpy, pillow, police Bebas Neue.
 """
 import math, os, subprocess, sys, wave
@@ -21,17 +21,17 @@ SORTIE = os.path.join(ICI, "generique_gta6_live_paysage.mp4" if PAYSAGE else "ge
 # ---------------------------------------------------------------- texte / voix
 # (texte prononcé, texte affiché, pause après en s)
 LIGNES = [
-    ("Ce soir...", "CE SOIR...", 0.35),
-    ("la ville ne dort jamais.", "LA VILLE NE DORT JAMAIS", 0.6),
-    ("Les néons s'allument.", "LES NÉONS S'ALLUMENT", 0.3),
-    ("Les sirènes hurlent.", "LES SIRÈNES HURLENT", 0.6),
-    ("Ici, une seule règle :", "UNE SEULE RÈGLE", 0.25),
-    ("il n'y a pas de règles.", "PAS DE RÈGLES", 0.8),
-    ("Bienvenue...", "BIENVENUE", 0.2),
-    ("dans le live.", "DANS LE LIVE", 0.5),
-    ("G T A 6.", None, 0.5),
-    ("C'est parti !", None, 0.0),
+    ("Des années... qu'on attend.", "DES ANNÉES QU'ON ATTEND", 0.5),
+    ("Des trailers regardés en boucle.", "DES TRAILERS EN BOUCLE", 0.5),
+    ("Des rumeurs... des reports... des nuits entières à y croire.", "DES NUITS À Y CROIRE", 0.9),
+    ("Et ce soir...", "ET CE SOIR...", 0.25),
+    ("l'attente est terminée.", "L'ATTENTE EST TERMINÉE", 0.7),
+    ("On y est. Ensemble.", "ON Y EST. ENSEMBLE.", 0.5),
+    ("Bienvenue dans le live.", "BIENVENUE DANS LE LIVE", 0.6),
+    ("G.T.A. six.", None, 0.5),
+    ("C'est maintenant !", None, 0.0),
 ]
+DROP_LIGNE = 3  # la musique démarre sur "Et ce soir..."
 DEBUT_VOIX = 1.2
 
 
@@ -43,37 +43,22 @@ def lire_wav(p):
     return x, w.getframerate()
 
 
-VOIX_FICHIER = os.path.join(ICI, "voix_elevenlabs.mp3")  # voix ElevenLabs (via Higgsfield)
+DOSSIER_VOIX = os.path.join(ICI, "voix")  # l01.mp3, l02.mp3… : une phrase par fichier (ElevenLabs "Gideon" via Higgsfield)
 
 
-def decouper_voix():
-    """Charge la voix ElevenLabs et la coupe aux silences -> une piste par ligne."""
-    propre = f"{TMP}/voix_propre.wav"
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", VOIX_FICHIER, "-af",
+def charger_voix(i):
+    src, fin = os.path.join(DOSSIER_VOIX, f"l{i + 1:02d}.mp3"), f"{TMP}/l{i}.wav"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-af",
+                    "silenceremove=start_periods=1:start_threshold=-40dB,areverse,"
+                    "silenceremove=start_periods=1:start_threshold=-40dB,areverse,"
                     "highpass=f=45,equalizer=f=120:t=q:w=1:g=3,"
                     "acompressor=threshold=-18dB:ratio=3:attack=5:release=150,volume=1.4",
-                    "-ac", "1", "-ar", str(SR), propre], check=True)
-    x, _ = lire_wav(propre)
-    log = subprocess.run(["ffmpeg", "-i", propre, "-af", "silencedetect=n=-38dB:d=0.3", "-f", "null", "-"],
-                         capture_output=True, text=True).stderr
-    import re
-    deb = [float(v) for v in re.findall(r"silence_start: ([0-9.]+)", log)]
-    fin = [float(v) for v in re.findall(r"silence_end: ([0-9.]+)", log)]
-    segs, cur = [], 0.0
-    for d, f in zip(deb, fin):
-        segs.append([cur, d]); cur = f
-    segs.append([cur, len(x) / SR])
-    segs = [s_ for s_ in segs if s_[1] - s_[0] > 0.15]
-    while len(segs) > len(LIGNES):  # fusionne les morceaux séparés par la plus petite pause
-        k = min(range(len(segs) - 1), key=lambda j: segs[j + 1][0] - segs[j][1])
-        segs[k][1] = segs[k + 1][1]; del segs[k + 1]
-    marge = int(0.06 * SR)
-    return [x[max(0, int(a_ * SR) - marge): int(b_ * SR) + marge] for a_, b_ in segs]
+                    "-ac", "1", "-ar", str(SR), fin], check=True)
+    return lire_wav(fin)[0]
 
 
 print("> voix…")
-morceaux = decouper_voix()
-assert len(morceaux) == len(LIGNES), f"{len(morceaux)} morceaux pour {len(LIGNES)} lignes"
+morceaux = [charger_voix(i) for i in range(len(LIGNES))]
 pistes, t = [], DEBUT_VOIX
 for (dit, affiche, pause), x in zip(LIGNES, morceaux):
     pistes.append((t, x, affiche))
@@ -120,7 +105,7 @@ for k in range(nb):
     ajoute(s * env_adsr(n, 0.4, 0.5), k * mesure, 0.035)
 
 # basse pulsée en croches à partir du drop
-DROP = pistes[2][0]
+DROP = pistes[DROP_LIGNE][0]
 k = 0
 while DROP + k * beat / 2 < T_PARTI + 1.0:
     t0 = DROP + k * beat / 2
@@ -144,7 +129,7 @@ while DROP + k * beat < T_PARTI + 1.0:
 # sirène lointaine au moment "les sirènes hurlent"
 t_sir = pistes[3][0] - 0.3; n = int(2.6 * SR); st = np.arange(n) / SR
 sir = np.sin(2 * np.pi * np.cumsum(700 + 250 * np.sin(2 * np.pi * 0.9 * st)) / SR).astype(np.float32)
-ajoute(sir * env_adsr(n, 0.8, 1.2), t_sir, 0.05)
+# (sirène retirée : intro plus émotion)
 
 # grondement d'intro + whoosh avant GTA 6 + gros impact
 n = int(DEBUT_VOIX * 2 * SR)
@@ -315,7 +300,7 @@ for i, (t0, x, aff) in enumerate(pistes):
         sous_titres.append((t0, t0 + len(x) / SR + 0.35, calque_texte(aff, 130 * S, BLANC, lueur, int(6 * S))))
 C_GTA = calque_texte("GTA 6", 430 * S, (255, 245, 250), ROSE, int(10 * S))
 C_LIVE = calque_texte("LIVE", 240 * S, (230, 255, 255), CYAN, int(30 * S))
-C_PARTI = calque_texte("C'EST PARTI !", 150 * S, (255, 240, 120), (255, 120, 40), int(6 * S))
+C_PARTI = calque_texte("C'EST MAINTENANT !", 150 * S, (255, 240, 120), (255, 120, 40), int(6 * S))
 C_DIRECT = calque_texte("EN DIRECT", 100 * S, BLANC, (255, 30, 60), int(8 * S))
 
 Y_TXT = int(H * 0.30) if not PAYSAGE else int(H * 0.28)
