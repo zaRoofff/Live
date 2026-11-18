@@ -372,7 +372,7 @@ for fi in range(nf):
         brut = lecteur_fond.stdout.read(W * H * 3)
         if len(brut) == W * H * 3:
             dernier_fond = np.frombuffer(brut, np.uint8).reshape(H, W, 3).astype(np.float32)
-        fr = (dernier_fond * 0.62 + TEINTE * 0.16) * VIGNETTE if dernier_fond is not None else np.zeros((H, W, 3), np.float32)
+        fr = (dernier_fond * 0.78 + TEINTE * 0.08) * VIGNETTE if dernier_fond is not None else np.zeros((H, W, 3), np.float32)
     else:
         fr = FOND.copy()
         g = grille(t); bas = fr[HOR:]
