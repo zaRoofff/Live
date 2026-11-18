@@ -3,7 +3,8 @@
 
 Usage : python3 generer.py            -> vertical 1080x1920 (TikTok)
         python3 generer.py --paysage  -> 1920x1080 (Twitch / YouTube)
-Dépendances : ffmpeg, espeak-ng + mbrola-fr1, numpy, pillow.
+Voix : voix_elevenlabs.mp3 (ElevenLabs, voix "Gideon" via Higgsfield).
+Dépendances : ffmpeg, numpy, pillow, police Bebas Neue.
 """
 import math, os, subprocess, sys, wave
 import numpy as np
@@ -26,7 +27,8 @@ LIGNES = [
     ("Les sirènes hurlent.", "LES SIRÈNES HURLENT", 0.6),
     ("Ici, une seule règle :", "UNE SEULE RÈGLE", 0.25),
     ("il n'y a pas de règles.", "PAS DE RÈGLES", 0.8),
-    ("Bienvenue... dans le live.", "BIENVENUE DANS LE LIVE", 0.5),
+    ("Bienvenue...", "BIENVENUE", 0.2),
+    ("dans le live.", "DANS LE LIVE", 0.5),
     ("G T A 6.", None, 0.5),
     ("C'est parti !", None, 0.0),
 ]
@@ -41,26 +43,43 @@ def lire_wav(p):
     return x, w.getframerate()
 
 
-def voix(texte, i):
-    brut, fin = f"{TMP}/l{i}_brut.wav", f"{TMP}/l{i}.wav"
-    subprocess.run(["espeak-ng", "-v", "mb-fr1", "-s", "112", "-p", "15", texte, "-w", brut],
-                   check=True, stderr=subprocess.DEVNULL)
-    # plus grave (x0.88), basses gonflées, compression, un peu de grain
-    filtre = (f"asetrate=16000*0.88,aresample={SR},atempo=1.06,"
-              "highpass=f=55,equalizer=f=110:t=q:w=1:g=7,equalizer=f=3200:t=q:w=1:g=3,"
-              "acompressor=threshold=-20dB:ratio=5:attack=5:release=120,volume=2.2")
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", brut, "-af", filtre, "-ac", "1", fin], check=True)
-    return lire_wav(fin)[0]
+VOIX_FICHIER = os.path.join(ICI, "voix_elevenlabs.mp3")  # voix ElevenLabs (via Higgsfield)
+
+
+def decouper_voix():
+    """Charge la voix ElevenLabs et la coupe aux silences -> une piste par ligne."""
+    propre = f"{TMP}/voix_propre.wav"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", VOIX_FICHIER, "-af",
+                    "highpass=f=45,equalizer=f=120:t=q:w=1:g=3,"
+                    "acompressor=threshold=-18dB:ratio=3:attack=5:release=150,volume=1.4",
+                    "-ac", "1", "-ar", str(SR), propre], check=True)
+    x, _ = lire_wav(propre)
+    log = subprocess.run(["ffmpeg", "-i", propre, "-af", "silencedetect=n=-38dB:d=0.3", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    import re
+    deb = [float(v) for v in re.findall(r"silence_start: ([0-9.]+)", log)]
+    fin = [float(v) for v in re.findall(r"silence_end: ([0-9.]+)", log)]
+    segs, cur = [], 0.0
+    for d, f in zip(deb, fin):
+        segs.append([cur, d]); cur = f
+    segs.append([cur, len(x) / SR])
+    segs = [s_ for s_ in segs if s_[1] - s_[0] > 0.15]
+    while len(segs) > len(LIGNES):  # fusionne les morceaux séparés par la plus petite pause
+        k = min(range(len(segs) - 1), key=lambda j: segs[j + 1][0] - segs[j][1])
+        segs[k][1] = segs[k + 1][1]; del segs[k + 1]
+    marge = int(0.06 * SR)
+    return [x[max(0, int(a_ * SR) - marge): int(b_ * SR) + marge] for a_, b_ in segs]
 
 
 print("> voix…")
+morceaux = decouper_voix()
+assert len(morceaux) == len(LIGNES), f"{len(morceaux)} morceaux pour {len(LIGNES)} lignes"
 pistes, t = [], DEBUT_VOIX
-for i, (dit, affiche, pause) in enumerate(LIGNES):
-    x = voix(dit, i)
+for (dit, affiche, pause), x in zip(LIGNES, morceaux):
     pistes.append((t, x, affiche))
     t += len(x) / SR + pause
-T_GTA = pistes[7][0]
-T_PARTI = pistes[8][0]
+T_GTA = pistes[-2][0]
+T_PARTI = pistes[-1][0]
 DUREE = T_PARTI + 3.2
 N = int(DUREE * SR)
 
@@ -152,7 +171,7 @@ for nom, sig in (("musique", mus), ("voix", vx)):
 # voix : réverb + ducking de la musique sous la voix
 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", f"{TMP}/voix.wav", "-i", f"{TMP}/musique.wav",
                 "-filter_complex",
-                "[0]aecho=0.8:0.5:60|140:0.35|0.2,asplit[v][sc];"
+                "[0]aecho=0.8:0.6:70|160:0.22|0.12,asplit[v][sc];"
                 "[1][sc]sidechaincompress=threshold=0.05:ratio=4:release=300[m];"
                 "[v][m]amix=inputs=2:normalize=0,alimiter=limit=0.95,pan=stereo|c0=c0|c1=c0[a]",
                 "-map", "[a]", f"{TMP}/audio.wav"], check=True)
