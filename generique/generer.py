@@ -303,6 +303,17 @@ C_LIVE = calque_texte("LIVE", 240 * S, (230, 255, 255), CYAN, int(30 * S))
 C_PARTI = calque_texte("C'EST MAINTENANT !", 150 * S, (255, 240, 120), (255, 120, 40), int(6 * S))
 C_DIRECT = calque_texte("EN DIRECT", 100 * S, BLANC, (255, 30, 60), int(8 * S))
 
+# logo optionnel affiché derrière "GTA 6 / LIVE" : mets ton fichier logo.png (fond transparent) dans generique/
+C_LOGO = None
+CHEMIN_LOGO = next((os.path.join(ICI, n) for n in ("logo.png", "logo.webp", "logo.jpg") if os.path.exists(os.path.join(ICI, n))), None)
+if CHEMIN_LOGO:
+    print("> logo :", os.path.basename(CHEMIN_LOGO))
+    lg = Image.open(CHEMIN_LOGO).convert("RGBA")
+    lg.thumbnail((int(W * 0.9), int(H * 0.45)), Image.LANCZOS)
+    la = np.asarray(lg, np.float32)
+    lueur_logo = np.asarray(lg.filter(ImageFilter.GaussianBlur(25 * S)), np.float32)[..., 3:4] / 255
+    C_LOGO = (la[..., :3], np.clip(la[..., 3:4] / 255 + lueur_logo * 0.0, 0, 1))
+
 Y_TXT = int(H * 0.30) if not PAYSAGE else int(H * 0.28)
 Y_GTA = int(H * 0.30) if not PAYSAGE else int(H * 0.30)
 
@@ -377,6 +388,8 @@ for fi in range(nf):
         k = (t - T_GTA)
         ech = 1.0 + 0.6 * math.exp(-k * 9)
         flick = 1.0 if k > 0.4 or int(k * 30) % 3 else 0.4
+        if C_LOGO:  # logo derrière le texte, apparition douce + léger zoom
+            coller(fr, C_LOGO, W / 2, Y_GTA + 200 * S, ease(k / 0.5) * 0.55, 1.12 - 0.08 * ease(k / 3))
         coller(fr, C_GTA, W / 2 + (rng.normal() * 14 * S if k < 0.25 else 0), Y_GTA, ease(k / 0.12) * flick, ech)
         coller(fr, C_LIVE, W / 2, Y_GTA + 400 * S, ease((k - 0.35) / 0.3), 1.0 + 0.3 * math.exp(-max(k - 0.35, 0) * 8))
         if k > 0.7:
