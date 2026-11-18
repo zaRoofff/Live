@@ -20,13 +20,17 @@ SORTIE = os.path.join(ICI, "generique_gta6_live_paysage.mp4" if PAYSAGE else "ge
 
 # ---------------------------------------------------------------- texte / voix
 # (texte prononcé, texte affiché, pause après en s)
+# (texte prononcé, texte affiché, pause après en s)
+# texte affiché : soit une chaîne, soit une liste de (morceau, début en s dans la phrase)
+# -> décalages mesurés mot par mot (transcription Whisper des fichiers voix/)
 LIGNES = [
-    ("Des années... qu'on attend.", "DES ANNÉES QU'ON ATTEND", 0.5),
-    ("Des trailers regardés en boucle.", "DES TRAILERS EN BOUCLE", 0.5),
-    ("Des rumeurs... des reports... des nuits entières à y croire.", "DES NUITS À Y CROIRE", 0.9),
+    ("Des années... qu'on attend.", [("DES ANNÉES", 0.0), ("QU'ON ATTEND", 0.56)], 0.5),
+    ("Les trailers, regardés en boucle.", [("LES TRAILERS", 0.0), ("REGARDÉS EN BOUCLE", 0.9)], 0.5),
+    ("Des rumeurs... des reports... des nuits entières à y croire.",
+     [("DES RUMEURS", 0.0), ("DES REPORTS", 1.08), ("DES NUITS ENTIÈRES", 2.52), ("À Y CROIRE", 3.64)], 0.9),
     ("Et ce soir...", "ET CE SOIR...", 0.25),
     ("l'attente est terminée.", "L'ATTENTE EST TERMINÉE", 0.7),
-    ("On y est. Ensemble.", "ON Y EST. ENSEMBLE.", 0.5),
+    ("On y est. Ensemble.", [("ON Y EST.", 0.0), ("ENSEMBLE.", 1.3)], 0.5),
     ("Bienvenue dans le live.", "BIENVENUE DANS LE LIVE", 0.6),
     ("Jé Té A six.", None, 0.5),
     ("C'est maintenant !", None, 0.0),
@@ -295,9 +299,15 @@ print("> calques texte…")
 ROSE, CYAN, BLANC = (255, 60, 190), (60, 230, 255), (255, 255, 255)
 sous_titres = []
 for i, (t0, x, aff) in enumerate(pistes):
-    if aff:
-        lueur = ROSE if i % 2 == 0 else CYAN
-        sous_titres.append((t0, t0 + len(x) / SR + 0.35, calque_texte(aff, 130 * S, BLANC, lueur, int(6 * S))))
+    if not aff:
+        continue
+    lueur = ROSE if i % 2 == 0 else CYAN
+    morceaux_txt = [(aff, 0.0)] if isinstance(aff, str) else aff
+    fin_ligne = t0 + len(x) / SR + 0.35
+    for j, (txt, off) in enumerate(morceaux_txt):
+        debut = t0 + off
+        fin_m = t0 + morceaux_txt[j + 1][1] + 0.05 if j + 1 < len(morceaux_txt) else fin_ligne
+        sous_titres.append((debut, fin_m, calque_texte(txt, 130 * S, BLANC, lueur, int(6 * S))))
 C_GTA = calque_texte("GTA 6", 430 * S, (255, 245, 250), ROSE, int(10 * S))
 C_LIVE = calque_texte("LIVE", 240 * S, (230, 255, 255), CYAN, int(30 * S))
 C_PARTI = calque_texte("C'EST MAINTENANT !", 150 * S, (255, 240, 120), (255, 120, 40), int(6 * S))
