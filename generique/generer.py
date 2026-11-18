@@ -28,7 +28,7 @@ LIGNES = [
     ("l'attente est terminée.", "L'ATTENTE EST TERMINÉE", 0.7),
     ("On y est. Ensemble.", "ON Y EST. ENSEMBLE.", 0.5),
     ("Bienvenue dans le live.", "BIENVENUE DANS LE LIVE", 0.6),
-    ("Gé Té A... six.", None, 0.5),
+    ("Jé Té A six.", None, 0.5),
     ("C'est maintenant !", None, 0.0),
 ]
 DROP_LIGNE = 3  # la musique démarre sur "Et ce soir..."
