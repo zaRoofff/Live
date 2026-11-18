@@ -1,0 +1,1 @@
+Mets ici tes captures (.jpg/.png) ou tes clips (.mp4/.mov) de TON gameplay, puis relance : python3 generer.py

@@ -332,12 +332,52 @@ ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "
                        "-movflags", "+faststart", SORTIE], stdin=subprocess.PIPE)
 nf = int(DUREE * FPS)
 scan = (np.sin(np.arange(H) * 2 * np.pi / 4) * 0.5 + 0.5)[:, None, None] * 0.06  # scanlines VHS
+
+# ---- fond perso : mets tes captures (.jpg/.png) ou tes clips (.mp4/.mov/.mkv) dans generique/fonds/
+DOSSIER_FONDS = os.path.join(ICI, "fonds")
+IMG_EXT, VID_EXT = (".jpg", ".jpeg", ".png", ".webp"), (".mp4", ".mov", ".mkv", ".webm")
+medias = sorted(f for f in (os.listdir(DOSSIER_FONDS) if os.path.isdir(DOSSIER_FONDS) else [])
+                if f.lower().endswith(IMG_EXT + VID_EXT))
+lecteur_fond = None
+if medias:
+    print(f"> fond perso : {len(medias)} fichier(s) dans fonds/")
+    seg = DUREE / len(medias) + 0.1
+    entrees, filtres = [], []
+    for i, m in enumerate(medias):
+        chemin = os.path.join(DOSSIER_FONDS, m)
+        if m.lower().endswith(IMG_EXT):
+            entrees += ["-loop", "1", "-t", f"{seg:.2f}", "-i", chemin]
+            # léger travelling sur les images fixes
+            filtres.append(f"[{i}]scale={int(W*1.12)}:{int(H*1.12)}:force_original_aspect_ratio=increase,"
+                           f"crop={W}:{H}:x='(iw-{W})*t/{seg:.2f}':y='(ih-{H})/2',fps={FPS},setsar=1,format=rgb24[v{i}]")
+        else:
+            entrees += ["-t", f"{seg:.2f}", "-i", chemin]
+            filtres.append(f"[{i}]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                           f"fps={FPS},setsar=1,format=rgb24,tpad=stop_mode=clone:stop_duration={seg:.2f},"
+                           f"trim=duration={seg:.2f}[v{i}]")
+    filtres.append("".join(f"[v{i}]" for i in range(len(medias))) + f"concat=n={len(medias)}:v=1:a=0[out]")
+    lecteur_fond = subprocess.Popen(["ffmpeg", "-loglevel", "error"] + entrees +
+                                    ["-filter_complex", ";".join(filtres), "-map", "[out]",
+                                     "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
+    # étalonnage néon : assombri, teinte rose en haut / bleue en bas, vignette
+    gy = np.linspace(0, 1, H)[:, None, None]
+    TEINTE = np.array([255, 40, 170], np.float32) * (1 - gy) + np.array([40, 120, 255], np.float32) * gy
+    vx_, vy_ = np.meshgrid(np.linspace(-1, 1, W), np.linspace(-1, 1, H))
+    VIGNETTE = np.clip(1.15 - 0.55 * (vx_ ** 2 + vy_ ** 2), 0.25, 1)[..., None].astype(np.float32)
+dernier_fond = None
+
 for fi in range(nf):
     t = fi / FPS
-    fr = FOND.copy()
-    g = grille(t); bas = fr[HOR:]
-    bas[:] = g
-    fr[MASQUE_PALM] = (14, 3, 26)
+    if lecteur_fond:
+        brut = lecteur_fond.stdout.read(W * H * 3)
+        if len(brut) == W * H * 3:
+            dernier_fond = np.frombuffer(brut, np.uint8).reshape(H, W, 3).astype(np.float32)
+        fr = (dernier_fond * 0.62 + TEINTE * 0.16) * VIGNETTE if dernier_fond is not None else np.zeros((H, W, 3), np.float32)
+    else:
+        fr = FOND.copy()
+        g = grille(t); bas = fr[HOR:]
+        bas[:] = g
+        fr[MASQUE_PALM] = (14, 3, 26)
     # pulsation des néons sur le beat après le drop
     if t > DROP:
         p = math.exp(-((t - DROP) % beat) * 6)
