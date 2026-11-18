@@ -309,13 +309,22 @@ CHEMIN_LOGO = next((os.path.join(ICI, n) for n in ("logo.png", "logo.webp", "log
 if CHEMIN_LOGO:
     print("> logo :", os.path.basename(CHEMIN_LOGO))
     lg = Image.open(CHEMIN_LOGO).convert("RGBA")
-    lg.thumbnail((int(W * 0.9), int(H * 0.45)), Image.LANCZOS)
+    lg.thumbnail((int(W * 0.88), int(H * (0.36 if PAYSAGE else 0.45))), Image.LANCZOS)
     la = np.asarray(lg, np.float32)
     lueur_logo = np.asarray(lg.filter(ImageFilter.GaussianBlur(25 * S)), np.float32)[..., 3:4] / 255
     C_LOGO = (la[..., :3], np.clip(la[..., 3:4] / 255 + lueur_logo * 0.0, 0, 1))
 
 Y_TXT = int(H * 0.30) if not PAYSAGE else int(H * 0.28)
 Y_GTA = int(H * 0.30) if not PAYSAGE else int(H * 0.30)
+
+
+if C_LOGO:
+    h_logo = C_LOGO[1].shape[0]
+    Y_LOGO = Y_GTA - (70 if PAYSAGE else 20) * S
+    Y_LIVE = Y_LOGO + h_logo / 2 + 120 * S
+    Y_DIRECT = Y_LIVE + 185 * S
+else:
+    Y_LIVE, Y_DIRECT = Y_GTA + 400 * S, Y_GTA + 610 * S
 
 
 def ease(x): x = min(max(x, 0), 1); return 1 - (1 - x) ** 3
@@ -388,14 +397,16 @@ for fi in range(nf):
         k = (t - T_GTA)
         ech = 1.0 + 0.6 * math.exp(-k * 9)
         flick = 1.0 if k > 0.4 or int(k * 30) % 3 else 0.4
-        if C_LOGO:  # logo derrière le texte, apparition douce + léger zoom
-            coller(fr, C_LOGO, W / 2, Y_GTA + 200 * S, ease(k / 0.5) * 0.55, 1.12 - 0.08 * ease(k / 3))
-        coller(fr, C_GTA, W / 2 + (rng.normal() * 14 * S if k < 0.25 else 0), Y_GTA, ease(k / 0.12) * flick, ech)
-        coller(fr, C_LIVE, W / 2, Y_GTA + 400 * S, ease((k - 0.35) / 0.3), 1.0 + 0.3 * math.exp(-max(k - 0.35, 0) * 8))
+        secousse = rng.normal() * 14 * S if k < 0.25 else 0
+        if C_LOGO:  # le logo remplace le texte "GTA 6"
+            coller(fr, C_LOGO, W / 2 + secousse, Y_LOGO, ease(k / 0.12) * flick, ech * (1.0 + 0.03 * ease(k / 4)))
+        else:
+            coller(fr, C_GTA, W / 2 + secousse, Y_GTA, ease(k / 0.12) * flick, ech)
+        coller(fr, C_LIVE, W / 2, Y_LIVE, ease((k - 0.35) / 0.3), 1.0 + 0.3 * math.exp(-max(k - 0.35, 0) * 8))
         if k > 0.7:
             blink = 1.0 if int(t * 2) % 2 == 0 else 0.55
-            coller(fr, C_DIRECT, W / 2 + 25 * S, Y_GTA + 610 * S, ease((k - 0.7) / 0.3) * blink)
-            rx, ry = W / 2 - 215 * S, Y_GTA + 610 * S
+            coller(fr, C_DIRECT, W / 2 + 25 * S, Y_DIRECT, ease((k - 0.7) / 0.3) * blink)
+            rx, ry = W / 2 - 215 * S, Y_DIRECT
             rr = 22 * S
             m = ((xx - rx) ** 2 + (yy - ry) ** 2) < rr * rr
             if blink == 1.0: fr[m] = (255, 30, 60)
