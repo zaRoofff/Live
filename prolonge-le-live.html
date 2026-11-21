@@ -4,49 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prolonge le Live</title>
-
-<script>
-/* ======================= RÉGLAGES (tu peux modifier) =======================
-   Les paramètres d'URL (?pseudo=...&depart=...) passent par-dessus ces valeurs. */
-window.REGLAGES = {
-  pseudo: '',                        // ton @ TikTok sans le @ (autorise tes commandes !temps dans le chat)
-  depart: '1h',                      // temps au lancement : '30m', '1h', '2h30', '90s'...
-  piece: 1,                          // secondes ajoutées par pièce
-  follow: 10,                        // secondes ajoutées par follow
-  max: '',                           // plafond optionnel, ex '12h' ('' = pas de limite)
-  websocket: 'ws://localhost:21213/' // TikFinity (laisse comme ça)
-};
-/* ========================================================================== */
-</script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,800;1,900&family=Pacifico&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,800;1,900&family=Pacifico&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #160c26;
     --gold-a: #fff3b0;
     --gold-b: #ffc83d;
     --gold-c: #ff9500;
-    --purple-a: #e6b3ff;
-    --purple-b: #a644ff;
-    --purple-c: #6d1dff;
-    --red: #ff3b5c;
   }
 
   html, body { margin: 0; background: transparent; overflow: hidden; }
-  body.bg { background: radial-gradient(120% 90% at 30% 20%, #3b2b57 0%, #120d1c 70%); min-height: 100vh; }
 
   #overlay {
     position: absolute; top: 0; left: 0;
-    padding: 14px 30px 70px 34px;
+    padding: 14px 30px 24px 34px;
     display: inline-flex; flex-direction: column; align-items: stretch; gap: 16px;
-    transform-origin: 0 0;
     font-family: 'Montserrat', 'Arial Black', sans-serif;
     font-style: italic; font-weight: 900;
     color: #fff;
-    user-select: none;
   }
 
   /* ---------- Titre ---------- */
@@ -98,11 +75,15 @@ window.REGLAGES = {
     width: 66px; height: 66px; transform: translateY(-50%);
     border-radius: 50%; display: grid; place-items: center;
   }
+  /* Pièce TikTok */
   .icon.coin {
-    background: radial-gradient(circle at 34% 28%, #fff7c8 0 10%, #ffd640 34%, #f5a300 68%, #b06400 100%);
-    box-shadow: 0 0 0 4px var(--ink), inset 0 0 0 4px rgba(255,255,255,.4), inset 0 -5px 0 rgba(120,60,0,.35), 0 0 18px rgba(255,170,0,.85);
+    background:
+      radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(140,70,0,.45) 63% 66%, transparent 67%),
+      radial-gradient(circle at 34% 28%, #fff7c8 0 10%, #ffd640 34%, #f5a300 68%, #b06400 100%);
+    box-shadow: 0 0 0 4px var(--ink), inset 0 0 0 3px rgba(255,255,255,.45), inset 0 -5px 0 rgba(120,60,0,.35), 0 0 18px rgba(255,170,0,.85);
   }
-  .icon.coin svg { width: 36px; height: 36px; fill: #8f4a00; filter: drop-shadow(0 1px 0 rgba(255,255,255,.5)); }
+  .icon.coin svg { width: 34px; height: 34px; margin-left: 2px; overflow: visible; filter: drop-shadow(0 2px 0 rgba(110,55,0,.55)); }
+  .icon.coin svg path { fill: #fff; stroke: #8f4a00; stroke-width: 1.6; stroke-linejoin: round; paint-order: stroke fill; }
   .icon.follow {
     background: radial-gradient(circle at 34% 28%, #f3d0ff 0 9%, #b44dff 45%, #6d1dff 100%);
     box-shadow: 0 0 0 4px var(--ink), inset 0 0 0 4px rgba(255,255,255,.28), 0 0 18px rgba(180,77,255,.95);
@@ -116,68 +97,6 @@ window.REGLAGES = {
     color: transparent;
     filter: drop-shadow(0 3px 0 rgba(0,0,0,.55));
   }
-
-  /* ---------- Chrono ---------- */
-  .timer-row { position: relative; display: flex; justify-content: center; margin-top: 2px; }
-  .timer {
-    font-style: normal; font-weight: 900; font-size: 78px; line-height: 1;
-    color: #fff;
-    text-shadow:
-      -3px -3px 0 var(--ink), 3px -3px 0 var(--ink), -3px 3px 0 var(--ink), 3px 3px 0 var(--ink),
-      0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink),
-      0 8px 0 rgba(0,0,0,.4), 0 0 26px rgba(180,77,255,.6);
-    transition: color .3s, opacity .3s;
-  }
-  .timer .d { display: inline-block; width: .68em; text-align: center; }
-  .timer .c { display: inline-block; width: .3em; text-align: center; transform: translateY(-.06em); }
-  .timer.low { color: #ffd3dc; animation: pulse 1s ease-in-out infinite; }
-  .timer.done { color: var(--red); animation: blink 1s steps(2, start) infinite; }
-  .timer.bump { animation: bump .5s ease-out; }
-  .paused .timer { opacity: .55; }
-  .badge {
-    position: absolute; right: -6px; top: -14px;
-    font-size: 15px; font-style: normal; letter-spacing: 1px;
-    padding: 4px 10px; border-radius: 999px;
-    background: var(--ink); border: 2px solid #fff; display: none;
-  }
-  .paused .badge { display: block; }
-
-  @keyframes pulse { 50% { transform: scale(1.05); color: #ff8fa3; } }
-  @keyframes blink { to { opacity: .35; } }
-  @keyframes bump { 0% { transform: scale(1); } 30% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-  /* ---------- "+10 sec" qui s'envolent ---------- */
-  .fx { position: absolute; left: 0; right: 0; bottom: -64px; height: 0; pointer-events: none; }
-  .pop {
-    position: absolute; left: 50%; bottom: 0;
-    padding: 5px 14px 6px; border-radius: 999px; border: 3px solid;
-    background: rgba(22,12,38,.94);
-    font-size: 24px; white-space: nowrap;
-    animation: rise 2.4s ease-out forwards;
-  }
-  .pop.coin { border-color: var(--gold-b); color: var(--gold-b); box-shadow: 0 0 14px rgba(255,170,0,.6); }
-  .pop.follow { border-color: var(--purple-b); color: var(--purple-a); box-shadow: 0 0 14px rgba(180,77,255,.7); }
-  .pop.manual { border-color: #fff; color: #fff; }
-  .pop small { margin-left: 8px; font-size: 16px; font-weight: 800; color: #fff; opacity: .9; }
-  @keyframes rise {
-    0%   { opacity: 0; transform: translate(calc(-50% + var(--x)), 18px) scale(.7); }
-    12%  { opacity: 1; transform: translate(calc(-50% + var(--x)), 0) scale(1.06); }
-    22%  { transform: translate(calc(-50% + var(--x)), -2px) scale(1); }
-    75%  { opacity: 1; }
-    100% { opacity: 0; transform: translate(calc(-50% + var(--x)), -12px) scale(.96); }
-  }
-
-  /* ---------- Statut connexion ---------- */
-  .status {
-    position: absolute; left: 34px; bottom: 4px;
-    font: 800 13px/1 'Montserrat', sans-serif; font-style: normal;
-    padding: 5px 10px; border-radius: 999px;
-    background: rgba(22,12,38,.85); color: #fff;
-    opacity: 0; transition: opacity .4s;
-  }
-  .status.show { opacity: 1; }
-  .status.ok { color: #7dffb0; }
-  .status.off { color: #ff9fb0; }
 </style>
 </head>
 <body>
@@ -209,288 +128,21 @@ window.REGLAGES = {
     </svg>
   </div>
 
+  <!-- 1 pièce = +1 sec -->
   <div class="pill coin">
     <div class="icon coin">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
     </div>
-    <span class="lbl">1 pièce =</span><span class="val" id="coinVal">+1 sec</span>
+    <span class="lbl">1 pièce =</span><span class="val">+1 sec</span>
   </div>
 
+  <!-- 1 follow = +10 sec -->
   <div class="pill follow">
     <div class="icon follow">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>
     </div>
-    <span class="lbl">1 follow =</span><span class="val" id="followVal">+10 sec</span>
+    <span class="lbl">1 follow =</span><span class="val">+10 sec</span>
   </div>
-
-  <div class="timer-row" id="row">
-    <div class="timer" id="timer"></div>
-    <div class="badge">PAUSE</div>
-    <div class="fx" id="fx"></div>
-  </div>
-
-  <div class="status" id="status"></div>
 </div>
-
-<script>
-(() => {
-  const R = window.REGLAGES || {};
-  const P = new URLSearchParams(location.search);
-  const get = (k, d) => (P.has(k) ? P.get(k) : d);
-  const toNum = (v, d) => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : d; };
-  const pad = n => String(n).padStart(2, '0');
-  const $ = id => document.getElementById(id);
-
-  // "1h30", "45m", "90s", "2h", "30" (= minutes) -> secondes
-  function parseDur(v) {
-    if (v == null) return null;
-    const s = String(v).toLowerCase().replace(/\s+/g, '');
-    if (!s) return null;
-    if (/^\d+([.,]\d+)?$/.test(s)) return Math.round(toNum(s, 0) * 60);
-    const re = /(\d+(?:[.,]\d+)?)(h|min|mn|m|sec|s)?/g;
-    let total = 0, last = '', found = false, m;
-    while ((m = re.exec(s))) {
-      found = true;
-      let u = m[2] || (last === 'h' ? 'm' : last === 'm' ? 's' : 'm');
-      if (u === 'min' || u === 'mn') u = 'm';
-      if (u === 'sec') u = 's';
-      total += toNum(m[1], 0) * (u === 'h' ? 3600 : u === 'm' ? 60 : 1);
-      last = u;
-    }
-    return found ? Math.round(total) : null;
-  }
-
-  const CFG = {
-    host:   String(get('pseudo', R.pseudo || '')).replace(/^@/, '').trim().toLowerCase(),
-    start:  parseDur(get('depart', R.depart)) ?? 3600,
-    coin:   toNum(get('piece', R.piece), 1),
-    follow: toNum(get('follow', R.follow), 10),
-    max:    parseDur(get('max', R.max)),
-    ws:     get('ws', R.websocket || 'ws://localhost:21213/'),
-    scale:  toNum(get('scale', 1), 1),
-    demo:   P.get('demo') === '1',
-    status: P.get('status') !== '0',
-    reset:  P.get('reset') === '1',
-  };
-
-  const timerEl = $('timer'), row = $('row'), fx = $('fx'), statusEl = $('status');
-  if (P.get('bg') === '1') document.body.classList.add('bg');
-  if (CFG.scale !== 1) $('overlay').style.transform = `scale(${CFG.scale})`;
-
-  const fmtNum = n => String(Math.round(n * 100) / 100).replace('.', ',');
-  $('coinVal').textContent = `+${fmtNum(CFG.coin)} sec`;
-  $('followVal').textContent = `+${fmtNum(CFG.follow)} sec`;
-
-  function fmtGain(sec) {
-    const sign = sec < 0 ? '-' : '+';
-    let t = Math.round(Math.abs(sec));
-    if (t < 60) return `${sign}${t} sec`;
-    const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
-    if (h) return `${sign}${h} h ${pad(m)}`;
-    return s ? `${sign}${m} min ${pad(s)}` : `${sign}${m} min`;
-  }
-
-  // ---------- État du chrono (sauvegardé si l'overlay recharge) ----------
-  const KEY = 'prolonge-le-live:v1';
-  const STALE = 2 * 3600 * 1000; // sauvegarde plus vieille que 2h = nouveau live
-  const S = { running: true, endAt: 0, left: 0, follows: new Set() };
-
-  function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
-  function save() {
-    if (CFG.demo) return;
-    try {
-      localStorage.setItem(KEY, JSON.stringify({
-        running: S.running, endAt: S.endAt, left: S.left,
-        follows: [...S.follows].slice(-5000), savedAt: Date.now()
-      }));
-    } catch (e) {}
-  }
-
-  const remaining = () => (S.running ? Math.max(0, S.endAt - Date.now()) : S.left);
-
-  function setRemaining(ms) {
-    ms = Math.max(0, ms);
-    if (CFG.max) ms = Math.min(ms, CFG.max * 1000);
-    if (S.running) S.endAt = Date.now() + ms; else S.left = ms;
-    save(); render();
-  }
-  function pause()  { if (!S.running) return; S.left = remaining(); S.running = false; save(); render(); }
-  function resume() { if (S.running) return; S.endAt = Date.now() + S.left; S.running = true; save(); render(); }
-  function resetAll() { S.running = true; S.follows.clear(); setRemaining(CFG.start * 1000); }
-
-  const saved = !CFG.reset && !CFG.demo && load();
-  if (saved && Date.now() - (saved.savedAt || 0) < STALE) {
-    S.running = !!saved.running;
-    S.endAt = +saved.endAt || 0;
-    S.left = +saved.left || 0;
-    (saved.follows || []).forEach(u => S.follows.add(u));
-  } else {
-    S.endAt = Date.now() + CFG.start * 1000;
-    save();
-  }
-
-  // ---------- Affichage ----------
-  let lastTxt = '';
-  function render() {
-    const t = Math.ceil(remaining() / 1000);
-    const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
-    const txt = `${pad(h)}:${pad(m)}:${pad(s)}`;
-    if (txt !== lastTxt) {
-      timerEl.innerHTML = [...txt].map(c => (c === ':' ? '<span class="c">:</span>' : `<span class="d">${c}</span>`)).join('');
-      lastTxt = txt;
-    }
-    timerEl.classList.toggle('low', t > 0 && t <= 60);
-    timerEl.classList.toggle('done', t === 0);
-    row.classList.toggle('paused', !S.running);
-  }
-
-  function bump() {
-    timerEl.classList.remove('bump');
-    void timerEl.offsetWidth;
-    timerEl.classList.add('bump');
-  }
-  timerEl.addEventListener('animationend', e => { if (e.animationName === 'bump') timerEl.classList.remove('bump'); });
-
-  function popup(sec, name, kind) {
-    const el = document.createElement('div');
-    el.className = 'pop ' + kind;
-    el.style.setProperty('--x', `${Math.round((Math.random() - 0.5) * 160)}px`);
-    const main = document.createElement('span');
-    main.textContent = fmtGain(sec);
-    el.appendChild(main);
-    if (name) {
-      const sm = document.createElement('small');
-      sm.textContent = String(name).slice(0, 18);
-      el.appendChild(sm);
-    }
-    el.addEventListener('animationend', () => el.remove());
-    fx.appendChild(el);
-    while (fx.children.length > 5) fx.firstChild.remove();
-  }
-
-  function adjust(sec, name, kind) {
-    if (!sec) return;
-    setRemaining(remaining() + sec * 1000);
-    popup(sec, name, kind);
-    if (sec > 0) bump();
-  }
-
-  // ---------- Événements TikTok (via TikFinity) ----------
-  function who(d) {
-    const u = d.user || {};
-    const id = String(d.uniqueId || u.uniqueId || d.userId || u.userId || '').toLowerCase();
-    const name = d.nickname || u.nickname || d.uniqueId || u.uniqueId || '';
-    return { id, name };
-  }
-
-  const streaks = new Map();
-  function onGift(d) {
-    const g = d.giftDetails || d.gift || {};
-    const coins = Number(d.diamondCount ?? g.diamondCount ?? g.diamond_count ?? d.extendedGiftInfo?.diamond_count ?? 0);
-    if (!coins) return;
-    const { id, name } = who(d);
-    const count = Number(d.repeatCount ?? 1) || 1;
-    const type = Number(d.giftType ?? g.giftType ?? g.type ?? 0);
-    let n = count;
-    if (type === 1) {
-      // cadeau en série (combo) : on compte au fur et à mesure, sans doublon
-      const key = id + '|' + (d.giftId ?? g.id ?? g.giftId ?? '');
-      const prev = streaks.get(key) || 0;
-      n = count >= prev ? count - prev : count;
-      if (d.repeatEnd) streaks.delete(key); else streaks.set(key, count);
-    }
-    if (n > 0) adjust(n * coins * CFG.coin, name, 'coin');
-  }
-
-  function onFollow(d) {
-    const { id, name } = who(d);
-    if (id) {
-      if (S.follows.has(id)) return; // 1 seul bonus par personne (anti unfollow/refollow)
-      S.follows.add(id);
-    }
-    adjust(CFG.follow, name, 'follow');
-  }
-
-  // Commandes chat (toi via ?pseudo= ou tes modos) :
-  // !temps +5m | !temps -30s | !temps 2h | !temps pause | !temps go
-  function onChat(d) {
-    const txt = String(d.comment || d.content || '').trim();
-    if (!/^!(temps|timer)\b/i.test(txt)) return;
-    const { id } = who(d);
-    const isMod = d.isModerator || d.userIdentity?.isModeratorOfAnchor || d.user?.isModerator;
-    if (!((CFG.host && id === CFG.host) || isMod)) return;
-    const arg = txt.replace(/^!\w+\s*/, '').toLowerCase();
-    if (/^(pause|stop)$/.test(arg)) return pause();
-    if (/^(go|play|start|reprise|reprendre)$/.test(arg)) return resume();
-    if (arg === 'reset') return resetAll();
-    const m = arg.match(/^([+-])?\s*(.+)$/);
-    const sec = m && parseDur(m[2]);
-    if (sec == null) return;
-    if (m[1] === '+') adjust(sec, '', 'manual');
-    else if (m[1] === '-') adjust(-sec, '', 'manual');
-    else { setRemaining(sec * 1000); bump(); }
-  }
-
-  function handle(ev, d) {
-    if (!d || typeof d !== 'object') return;
-    ev = String(ev || '').toLowerCase();
-    if (ev === 'gift') onGift(d);
-    else if (ev === 'follow') onFollow(d);
-    else if (ev === 'social' && /follow/i.test(d.displayType || d.label || '')) onFollow(d);
-    else if (ev === 'chat') onChat(d);
-  }
-
-  // ---------- Statut ----------
-  let hideTimer;
-  function setStatus(kind, text, hideAfter) {
-    if (!CFG.status) return;
-    clearTimeout(hideTimer);
-    statusEl.className = 'status show ' + kind;
-    statusEl.textContent = text;
-    if (hideAfter) hideTimer = setTimeout(() => statusEl.classList.remove('show'), hideAfter);
-  }
-
-  function connect() {
-    let ws;
-    try { ws = new WebSocket(CFG.ws); } catch (e) { setTimeout(connect, 3000); return; }
-    ws.onopen = () => setStatus('ok', '✓ TikFinity connecté', 3000);
-    ws.onclose = () => { setStatus('off', '⚠ TikFinity non connecté'); setTimeout(connect, 3000); };
-    ws.onmessage = e => {
-      let msg;
-      try { msg = JSON.parse(e.data); } catch (err) { return; }
-      handle(msg.event || msg.type, msg.data || msg);
-    };
-  }
-
-  // ---------- Mode démo (?demo=1) ----------
-  function demo() {
-    const names = ['lucas_77', 'ines.tv', 'maxou', 'sarah_ttk', 'kenzo', 'jade', 'nathan.gg', 'lea_off'];
-    const gifts = [1, 1, 1, 5, 10, 30, 99, 199];
-    const pick = a => a[Math.floor(Math.random() * a.length)];
-    setInterval(() => {
-      if (Math.random() < 0.4) adjust(CFG.follow, pick(names), 'follow');
-      else adjust(pick(gifts) * CFG.coin, pick(names), 'coin');
-    }, 1400);
-  }
-
-  // ---------- Raccourcis clavier (OBS : clic droit > Interagir) ----------
-  addEventListener('keydown', e => {
-    const k = e.key.toLowerCase();
-    if (k === '+' || k === 'arrowup') adjust(60, '', 'manual');
-    else if (k === '-' || k === 'arrowdown') adjust(-60, '', 'manual');
-    else if (k === ' ') (S.running ? pause() : resume());
-    else if (k === 'f') onFollow({ uniqueId: 'test_' + Date.now(), nickname: 'test' });
-    else if (k === 'c') adjust(10 * CFG.coin, 'test', 'coin');
-    else if (k === 'r') resetAll();
-  });
-
-  render();
-  setInterval(render, 200);
-  setInterval(() => { if (S.running) save(); }, 10000);
-
-  if (CFG.demo) demo();
-  else { setStatus('', 'Connexion à TikFinity…'); connect(); }
-})();
-</script>
 </body>
 </html>
